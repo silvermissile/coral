@@ -1,9 +1,9 @@
 /**
- * Copyright 2017-2023 LinkedIn Corporation. All rights reserved.
+ * Copyright 2023 LinkedIn Corporation. All rights reserved.
  * Licensed under the BSD-2 Clause license.
  * See LICENSE in the project root for license information.
  */
-package com.linkedin.coral.trino.trino2rel;
+package com.linkedin.coral.incremental;
 
 import java.io.File;
 import java.io.IOException;
@@ -21,13 +21,15 @@ import org.apache.hadoop.hive.ql.processors.CommandProcessorResponse;
 import org.apache.hadoop.hive.ql.session.SessionState;
 
 import com.linkedin.coral.common.HiveMscAdapter;
-import com.linkedin.coral.trino.rel2trino.RelToTrinoConverter;
+import com.linkedin.coral.hive.hive2rel.HiveToRelConverter;
 
 
-public class ToRelTestUtils {
-  public static final String CORAL_FROM_TRINO_TEST_DIR = "coral.trino.test.dir";
+public class TestUtils {
+
+  public static final String CORAL_INCREMENTAL_TEST_DIR = "coral.incremental.test.dir";
 
   private static HiveMscAdapter hiveMetastoreClient;
+  public static HiveToRelConverter hiveToRelConverter;
 
   static void run(Driver driver, String sql) {
     while (true) {
@@ -43,39 +45,33 @@ public class ToRelTestUtils {
     }
   }
 
-  public static TrinoToRelConverter getTrinoToRelConverter() {
-    return new TrinoToRelConverter(hiveMetastoreClient);
-  }
-
-  public static RelToTrinoConverter getRelToTrinoConverter() {
-    return new RelToTrinoConverter();
-  }
-
   public static void initializeViews(HiveConf conf) throws HiveException, MetaException, IOException {
-    String testDir = conf.get(CORAL_FROM_TRINO_TEST_DIR);
+    String testDir = conf.get(CORAL_INCREMENTAL_TEST_DIR);
     System.out.println("Test Workspace: " + testDir);
     FileUtils.deleteDirectory(new File(testDir));
     SessionState.start(conf);
     Driver driver = new Driver(conf);
     hiveMetastoreClient = new HiveMscAdapter(Hive.get(conf).getMSC());
+    hiveToRelConverter = new HiveToRelConverter(hiveMetastoreClient);
 
-    // Views and tables used in TrinoToTrinoConverterTest
-    run(driver, "CREATE DATABASE IF NOT EXISTS default");
-    run(driver, "CREATE TABLE IF NOT EXISTS default.foo(show int, a int, b int, x date, y date)");
-    run(driver, "CREATE TABLE IF NOT EXISTS default.my_table(x array<int>, y array<array<int>>, z int)");
-    run(driver, "CREATE TABLE IF NOT EXISTS default.a(b int, id int, x int)");
-    run(driver, "CREATE TABLE IF NOT EXISTS default.b(foobar int, id int, y int)");
+    run(driver, "CREATE DATABASE IF NOT EXISTS test");
+
+    run(driver, "CREATE TABLE IF NOT EXISTS test.foo(a int, b varchar(30), c double)");
+    run(driver, "CREATE TABLE IF NOT EXISTS test.bar1(x int, y double)");
+    run(driver, "CREATE TABLE IF NOT EXISTS test.bar2(x int, y double)");
+    run(driver, "CREATE TABLE IF NOT EXISTS test.bar3(x int, y double)");
   }
 
   public static HiveConf loadResourceHiveConf() {
-    InputStream hiveConfStream = ToRelTestUtils.class.getClassLoader().getResourceAsStream("hive.xml");
+    InputStream hiveConfStream = TestUtils.class.getClassLoader().getResourceAsStream("hive.xml");
     HiveConf hiveConf = new HiveConf();
-    hiveConf.set(CORAL_FROM_TRINO_TEST_DIR,
-        System.getProperty("java.io.tmpdir") + "/coral/trino/" + UUID.randomUUID().toString());
+    hiveConf.set(CORAL_INCREMENTAL_TEST_DIR,
+        System.getProperty("java.io.tmpdir") + "/coral/incremental/" + UUID.randomUUID().toString());
     hiveConf.addResource(hiveConfStream);
-    hiveConf.set("mapreduce.framework.name", "local-trino");
-    hiveConf.set("_hive.hdfs.session.path", "/tmp/coral/trino");
-    hiveConf.set("_hive.local.session.path", "/tmp/coral/trino");
+    hiveConf.set("mapreduce.framework.name", "local-incremental");
+    hiveConf.set("_hive.hdfs.session.path", "/tmp/coral/incremental");
+    hiveConf.set("_hive.local.session.path", "/tmp/coral/incremental");
     return hiveConf;
   }
+
 }

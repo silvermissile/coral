@@ -2,12 +2,14 @@ def modules = [
   'coral-common',
   'coral-dbt',
   'coral-hive',
+  'coral-incremental',
   'coral-pig',
   'coral-spark',
   'coral-schema',
   'coral-spark-plan',
   'coral-trino',
   'coral-service',
+  'coral-visualization',
   'shading'
 ]
 
